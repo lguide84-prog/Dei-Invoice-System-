@@ -239,8 +239,7 @@ export default function ClientForm({ onSubmit, initialData = {}, onCancel }) {
             min="0"
             step="0.01"
             className={`w-full border p-2 rounded ${errors.totalDue ? 'border-red-500' : ''}`}
-            placeholder="0.00"
-            disabled={!initialData._id} // Disable for new clients, auto-calculated
+            placeholder="Due amount"
           />
           {errors.totalDue && <p className="text-red-500 text-sm mt-1">{errors.totalDue}</p>}
         </div>
