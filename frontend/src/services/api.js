@@ -8,33 +8,46 @@ const API = axios.create({
   }
 });
 
-// Add request interceptor for debugging
-API.interceptors.request.use(request => {
-  console.log('Starting Request:', {
-    method: request.method,
-    url: request.url,
-    data: request.data
-  });
-  return request;
-});
+// Add token to every request
+API.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    console.log('Starting Request:', {
+      method: config.method,
+      url: config.url,
+      headers: config.headers,
+    });
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
 
-// Add response interceptor for better error handling
+// Response interceptor
 API.interceptors.response.use(
-  response => response,
-  error => {
+  (response) => {
+    console.log('Response:', response.data);
+    return response;
+  },
+  (error) => {
     if (error.response) {
-      // The request was made and the server responded with a status code
-      // that falls out of the range of 2xx
       console.error('Server Error:', {
         status: error.response.status,
         data: error.response.data,
-        headers: error.response.headers
       });
+      
+      if (error.response.status === 401) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.href = '/login';
+      }
     } else if (error.request) {
-      // The request was made but no response was received
       console.error('No response received:', error.request);
     } else {
-      // Something happened in setting up the request that triggered an Error
       console.error('Request Error:', error.message);
     }
     return Promise.reject(error);
@@ -42,11 +55,12 @@ API.interceptors.response.use(
 );
 
 export default {
-  // Get all clients
+  // Get all clients - FIXED: Added return statement
   getClients: async () => {
     try {
       const response = await API.get('/clients');
-      return response.data;
+      console.log('Clients data received:', response.data);
+      return response.data; // 🔥 IMPORTANT: Return the data
     } catch (error) {
       console.error('Error fetching clients:', error);
       throw error;
@@ -57,6 +71,7 @@ export default {
   getClient: async (id) => {
     try {
       const response = await API.get(`/clients/${id}`);
+      console.log('Client details:', response.data);
       return response.data;
     } catch (error) {
       console.error('Error fetching client:', error);
@@ -64,18 +79,17 @@ export default {
     }
   },
 
-  // Create new client - with better error handling
+  // Create new client
   createClient: async (clientData) => {
     try {
-      console.log('Sending client data:', clientData);
+      // Generate unique order number if not provided
+      if (!clientData.orderNumber || clientData.orderNumber === '') {
+        const timestamp = Date.now().toString().slice(-8);
+        const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+        clientData.orderNumber = `ORD-${timestamp}-${random}`;
+      }
       
-      // Validate required fields before sending
-      if (!clientData.businessName) {
-        throw new Error('Business name is required');
-      }
-      if (!clientData.phoneMobile) {
-        throw new Error('Phone number is required');
-      }
+      console.log('Sending client data:', clientData);
       
       const response = await API.post('/clients', clientData);
       console.log('Client created successfully:', response.data);
@@ -94,6 +108,7 @@ export default {
   updateClient: async (id, clientData) => {
     try {
       const response = await API.put(`/clients/${id}`, clientData);
+      console.log('Client updated:', response.data);
       return response.data;
     } catch (error) {
       console.error('Error updating client:', error);
@@ -105,6 +120,7 @@ export default {
   deleteClient: async (id) => {
     try {
       const response = await API.delete(`/clients/${id}`);
+      console.log('Client deleted:', response.data);
       return response.data;
     } catch (error) {
       console.error('Error deleting client:', error);
@@ -138,6 +154,7 @@ export default {
   addPayment: async (clientId, paymentData) => {
     try {
       const response = await API.post(`/clients/${clientId}/payments`, paymentData);
+      console.log('Payment added:', response.data);
       return response.data;
     } catch (error) {
       console.error('Error adding payment:', error);
@@ -149,6 +166,7 @@ export default {
   updatePaymentStatus: async (clientId, status) => {
     try {
       const response = await API.put(`/clients/${clientId}/status`, { status });
+      console.log('Status updated:', response.data);
       return response.data;
     } catch (error) {
       console.error('Error updating status:', error);

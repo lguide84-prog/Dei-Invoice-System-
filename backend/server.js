@@ -1,10 +1,10 @@
 const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
-
+const mongoose = require('mongoose');
 const connectDB = require('./config/db');
-const clientRoutes = require('./routes/clientRoutes');
-
+const clientRoutes = require('./routes/clientRoutes.js');
+const authRoutes = require('./routes/authRoutes.js')
 // Connect to database
 connectDB();
 
@@ -13,11 +13,9 @@ const app = express();
 // Updated CORS configuration to accept requests from Vercel frontend
 app.use(cors({
   origin: [
-    'https://dei-invoice-system.vercel.app',  // Your Vercel frontend URL
-    'http://localhost:3000',                    // Local development
-    'http://localhost:5173',                     // Vite default port
-    'http://127.0.0.1:3000',
-    'http://127.0.0.1:5173'
+                      // Local development
+    'https://dei-invoice-system.vercel.app',                     // Vite default port
+   
   ],
   credentials: true,                             // Allow cookies/auth headers
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -32,11 +30,28 @@ app.use(express.urlencoded({ extended: true }));
 
 // Routes
 app.use('/api/clients', clientRoutes);
-
+app.use('/api/auth', authRoutes);
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ message: 'Something went wrong!' });
+});
+
+// Add this temporary route in your backend (server.js) for testing
+app.get('/api/debug/clients-count', async (req, res) => {
+  try {
+    const db = mongoose.connection.db;
+    const collection = db.collection('clients');
+    const count = await collection.countDocuments();
+    const allClients = await collection.find({}).toArray();
+    res.json({ 
+      count, 
+      clients: allClients,
+      collections: await db.listCollections().toArray()
+    });
+  } catch (error) {
+    res.json({ error: error.message });
+  }
 });
 
 const PORT = process.env.PORT || 5000;
